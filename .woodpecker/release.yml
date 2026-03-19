@@ -46,13 +46,14 @@ steps:
           zip "$base.zip" "$f"
           rm "$f"
         done
-        sha256sum *.zip > "$NAME"_"$VERSION"_SHA256SUMS
+        cd ..
+        cp terraform-registry-manifest.json dist/"$NAME"_"$VERSION"_manifest.json
+        cd dist
+
+        sha256sum *.zip "$NAME"_"$VERSION"_manifest.json > "$NAME"_"$VERSION"_SHA256SUMS
 
         echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null
         gpg --batch --local-user "$GPG_FINGERPRINT" --detach-sign "$NAME"_"$VERSION"_SHA256SUMS
-
-        cd ..
-        cp terraform-registry-manifest.json dist/"$NAME"_"$VERSION"_manifest.json
 
         echo "Artifacts:"
         ls -la dist/

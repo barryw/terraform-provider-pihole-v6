@@ -15,18 +15,18 @@ services:
 
 steps:
   lint:
-    image: golang:1.24
+    image: golang:1.25
     commands:
       - go vet ./...
 
   unit-test:
-    image: golang:1.24
+    image: golang:1.25
     commands:
       - go test -v -count=1 ./...
     depends_on: [lint]
 
   acceptance-test:
-    image: golang:1.24
+    image: golang:1.25
     environment:
       PIHOLE_URL: http://pihole:80
       PIHOLE_PASSWORD: test-password

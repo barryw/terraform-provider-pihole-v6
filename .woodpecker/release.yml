@@ -24,42 +24,35 @@ steps:
         git fetch --tags 2>/dev/null || true
         TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
         VERSION=$(echo "$TAG" | sed 's/^v//')
-        echo "Tag: $TAG / Version: $VERSION"
+        NAME="terraform-provider-pihole-v6"
+        echo "Tag: $TAG / Version: $VERSION / Name: $NAME"
         echo "$TAG" > .tag
         echo "$VERSION" > .version
-
-        NAME="terraform-provider-pihole-v6"
+        echo "$NAME" > .name
         mkdir -p dist
 
-        # Build all platforms
-        echo "Building $NAME $VERSION for all platforms..."
-        GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/${NAME}_${VERSION}_linux_amd64"
-        GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/${NAME}_${VERSION}_linux_arm64"
-        GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/${NAME}_${VERSION}_darwin_amd64"
-        GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/${NAME}_${VERSION}_darwin_arm64"
-        GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/${NAME}_${VERSION}_windows_amd64.exe"
+        echo "Building all platforms..."
+        GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_linux_amd64
+        GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_linux_arm64
+        GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_darwin_amd64
+        GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_darwin_arm64
+        GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_windows_amd64.exe
 
-        # Zip each binary
         apt-get update -qq && apt-get install -y -qq zip gnupg > /dev/null 2>&1
         cd dist
-        for f in ${NAME}_${VERSION}_*; do
+        ls -la
+        for f in "$NAME"_"$VERSION"_*; do
           base=$(echo "$f" | sed 's/\.exe$//')
-          zip "${base}.zip" "$f"
+          zip "$base.zip" "$f"
           rm "$f"
         done
+        sha256sum *.zip > "$NAME"_"$VERSION"_SHA256SUMS
 
-        # SHA256SUMS
-        sha256sum *.zip > "${NAME}_${VERSION}_SHA256SUMS"
-
-        # GPG sign the SHA256SUMS
         echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null
-        gpg --batch --local-user "$GPG_FINGERPRINT" --detach-sign "${NAME}_${VERSION}_SHA256SUMS"
-        # Produces ${NAME}_${VERSION}_SHA256SUMS.sig
+        gpg --batch --local-user "$GPG_FINGERPRINT" --detach-sign "$NAME"_"$VERSION"_SHA256SUMS
 
         cd ..
-
-        # Registry manifest
-        cp terraform-registry-manifest.json "dist/${NAME}_${VERSION}_manifest.json"
+        cp terraform-registry-manifest.json dist/"$NAME"_"$VERSION"_manifest.json
 
         echo "Artifacts:"
         ls -la dist/
@@ -73,12 +66,13 @@ steps:
       - |
         TAG=$(cat .tag)
         VERSION=$(cat .version)
-        echo "Publishing release $TAG (version $VERSION)"
+        NAME=$(cat .name)
+        echo "Publishing release $TAG"
         apk add --no-cache github-cli > /dev/null 2>&1
         git config --global --add safe.directory "$CI_WORKSPACE"
 
         RELEASE_NOTES=$(cog changelog --at "$TAG" 2>/dev/null || echo "Release $TAG")
-        gh release create "$TAG" --repo "$CI_REPO" --title "terraform-provider-pihole-v6 $TAG" --notes "$RELEASE_NOTES" 2>/dev/null || echo "Release already exists"
+        gh release create "$TAG" --repo "$CI_REPO" --title "$NAME $TAG" --notes "$RELEASE_NOTES" 2>/dev/null || echo "Release already exists"
         gh release upload "$TAG" dist/*.zip dist/*SHA256SUMS dist/*SHA256SUMS.sig dist/*manifest.json --repo "$CI_REPO" --clobber
         echo "Release $TAG published with signed artifacts"
     depends_on: [build-and-sign]

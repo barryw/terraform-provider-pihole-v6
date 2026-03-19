@@ -5,7 +5,7 @@ when:
   - event: [push, pull_request, manual]
 
 services:
-  pihole:
+  pihole-test:
     image: pihole/pihole:latest
     environment:
       FTLCONF_webserver_api_password: test-password
@@ -30,17 +30,16 @@ steps:
   acceptance-test:
     image: golang:1.25
     environment:
-      PIHOLE_URL: http://pihole:80
+      PIHOLE_URL: http://pihole-test:80
       PIHOLE_PASSWORD: test-password
       TF_ACC: 1
     commands:
       - apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
       # Wait for PiHole API to be ready (returns 401 when API is up)
-      # PiHole can take 2-3 minutes to fully initialize in CI
       - |
         echo "Waiting for PiHole API..."
         for i in $(seq 1 90); do
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://pihole:80/api/auth 2>/dev/null)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://pihole-test:80/api/auth 2>/dev/null)
           if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "200" ]; then
             echo "PiHole API is ready (HTTP $HTTP_CODE) after attempt $i"
             break
@@ -48,8 +47,7 @@ steps:
           if [ "$i" = "90" ]; then
             echo "PiHole failed to become ready after 90 attempts"
             echo "Last HTTP code: $HTTP_CODE"
-            curl -v http://pihole:80/ 2>&1 || true
-            curl -v http://pihole:80/api/auth 2>&1 || true
+            curl -v http://pihole-test:80/ 2>&1 || true
             exit 1
           fi
           sleep 3

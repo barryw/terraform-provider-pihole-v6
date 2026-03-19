@@ -1,5 +1,5 @@
-github.com/barryw/go-pihole v0.0.0-20260319153939-e69c3a89974f h1:97RfYLEd3QgKhmA5BRTkihGjUqThHyqahJJCepXpk2k=
-github.com/barryw/go-pihole v0.0.0-20260319153939-e69c3a89974f/go.mod h1:B7ItyGqeHpmRgkb7m5K1MP0YywJqk/eAoJ4XBlCkkc8=
+github.com/barryw/go-pihole v0.0.0-20260319155707-452293116e5b h1:jUM+GVUt1J28pF8qqjnDmGW+0ha3bFVzKSWG2Z3tkys=
+github.com/barryw/go-pihole v0.0.0-20260319155707-452293116e5b/go.mod h1:B7ItyGqeHpmRgkb7m5K1MP0YywJqk/eAoJ4XBlCkkc8=
 github.com/bufbuild/protocompile v0.14.1 h1:iA73zAf/fyljNjQKwYzUHD6AD4R8KMasmwa/FBatYVw=
 github.com/bufbuild/protocompile v0.14.1/go.mod h1:ppVdAIhbr2H8asPk6k4pY7t9zB1OU5DoEw9xY/FUi1c=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=

@@ -3,7 +3,7 @@ module github.com/barryw/terraform-provider-pihole-v6
 go 1.25.0
 
 require (
-	github.com/barryw/go-pihole v0.0.0-20260319153939-e69c3a89974f
+	github.com/barryw/go-pihole v0.0.0-20260319155707-452293116e5b
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 )

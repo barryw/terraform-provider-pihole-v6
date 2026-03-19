@@ -2,26 +2,150 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	pihole "github.com/barryw/go-pihole"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type DNSRecordResource struct{}
+var (
+	_ resource.Resource                = &DNSRecordResource{}
+	_ resource.ResourceWithImportState = &DNSRecordResource{}
+	_ resource.ResourceWithConfigure   = &DNSRecordResource{}
+)
 
-func NewDNSRecordResource() resource.Resource { return &DNSRecordResource{} }
+type DNSRecordResource struct {
+	client *pihole.Client
+}
+
+type DNSRecordResourceModel struct {
+	ID     types.String `tfsdk:"id"`
+	Domain types.String `tfsdk:"domain"`
+	IP     types.String `tfsdk:"ip"`
+}
+
+func NewDNSRecordResource() resource.Resource {
+	return &DNSRecordResource{}
+}
 
 func (r *DNSRecordResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_dns_record"
 }
+
 func (r *DNSRecordResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{}
+	resp.Schema = schema.Schema{
+		Description: "Manages a local DNS record in PiHole.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "Composite ID in format domain:ip.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"domain": schema.StringAttribute{
+				Description: "The domain name.",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"ip": schema.StringAttribute{
+				Description: "The IP address to resolve to.",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+		},
+	}
 }
-func (r *DNSRecordResource) Create(_ context.Context, _ resource.CreateRequest, _ *resource.CreateResponse) {
+
+func (r *DNSRecordResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*pihole.Client)
+	if !ok {
+		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *pihole.Client, got: %T", req.ProviderData))
+		return
+	}
+	r.client = client
 }
-func (r *DNSRecordResource) Read(_ context.Context, _ resource.ReadRequest, _ *resource.ReadResponse) {
+
+func (r *DNSRecordResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan DNSRecordResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	err := r.client.CreateDNSRecord(plan.IP.ValueString(), plan.Domain.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Error creating DNS record", err.Error())
+		return
+	}
+
+	plan.ID = types.StringValue(fmt.Sprintf("%s:%s", plan.Domain.ValueString(), plan.IP.ValueString()))
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
-func (r *DNSRecordResource) Update(_ context.Context, _ resource.UpdateRequest, _ *resource.UpdateResponse) {
+
+func (r *DNSRecordResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state DNSRecordResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	record, err := r.client.GetDNSRecord(state.Domain.ValueString())
+	if err != nil {
+		if _, ok := err.(*pihole.ErrNotFound); ok {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading DNS record", err.Error())
+		return
+	}
+
+	state.Domain = types.StringValue(record.Domain)
+	state.IP = types.StringValue(record.IP)
+	state.ID = types.StringValue(fmt.Sprintf("%s:%s", record.Domain, record.IP))
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
-func (r *DNSRecordResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+
+func (r *DNSRecordResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
+	resp.Diagnostics.AddError("Update not supported", "DNS records are immutable. Changes require replacement.")
+}
+
+func (r *DNSRecordResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state DNSRecordResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	err := r.client.DeleteDNSRecord(state.IP.ValueString(), state.Domain.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Error deleting DNS record", err.Error())
+		return
+	}
+}
+
+func (r *DNSRecordResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	parts := strings.SplitN(req.ID, ":", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		resp.Diagnostics.AddError("Invalid import ID",
+			fmt.Sprintf("Expected format: domain:ip. Got: %q", req.ID))
+		return
+	}
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("domain"), parts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("ip"), parts[1])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }

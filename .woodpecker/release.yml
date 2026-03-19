@@ -16,32 +16,28 @@ steps:
     image: golang:1.25
     commands:
       - |
-        VERSION="${CI_COMMIT_TAG}"
+        git fetch --tags 2>/dev/null || true
+        VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
         echo "Building terraform-provider-pihole-v6 $VERSION for all platforms"
+        echo "$VERSION" > .version
         mkdir -p dist
 
-        # Build all platforms
         GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_linux_amd64"
         GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_linux_arm64"
         GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_darwin_amd64"
         GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_darwin_arm64"
         GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_windows_amd64.exe"
 
-        # Create zip archives
         apt-get update -qq && apt-get install -y -qq zip > /dev/null 2>&1
         cd dist
         for f in terraform-provider-pihole-v6_${VERSION}_*; do
           base="${f%.exe}"
           zip "${base}.zip" "$f"
         done
-
-        # SHA256SUMS
         sha256sum *.zip > "terraform-provider-pihole-v6_${VERSION}_SHA256SUMS"
         cd ..
 
-        # Registry manifest
         cp terraform-registry-manifest.json "dist/terraform-provider-pihole-v6_${VERSION}_manifest.json"
-
         echo "Built artifacts:"
         ls -la dist/
 
@@ -52,13 +48,13 @@ steps:
         from_secret: github_token
     commands:
       - |
-        VERSION="${CI_COMMIT_TAG}"
+        VERSION=$(cat .version)
+        echo "Publishing release $VERSION"
         apk add --no-cache github-cli > /dev/null 2>&1
         git config --global --add safe.directory "$CI_WORKSPACE"
 
-        # Create release with changelog
         RELEASE_NOTES=$(cog changelog --at "$VERSION" 2>/dev/null || echo "Release $VERSION")
         gh release create "$VERSION" --repo ${CI_REPO} --title "terraform-provider-pihole-v6 $VERSION" --notes "$RELEASE_NOTES" 2>/dev/null || echo "Release already exists"
         gh release upload "$VERSION" dist/*.zip dist/*SHA256SUMS dist/*manifest.json --repo ${CI_REPO} --clobber
-        echo "Release $VERSION published with all platform binaries"
+        echo "Release $VERSION published"
     depends_on: [build-all-platforms]

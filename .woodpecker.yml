@@ -10,7 +10,7 @@ services:
     environment:
       FTLCONF_webserver_api_password: test-password
       FTLCONF_webserver_api_app_sudo: "true"
-      FTLCONF_webserver_api_max_sessions: "64"
+      FTLCONF_webserver_api_max_sessions: "256"
       DNSMASQ_LISTENING: all
       PIHOLE_DNS_: "8.8.8.8"
     ports:

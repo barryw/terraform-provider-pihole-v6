@@ -1,0 +1,78 @@
+when:
+  - event: tag
+    branch: main
+
+labels:
+  platform: linux/amd64
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+    settings:
+      tags: true
+
+steps:
+  - name: build-all-platforms
+    image: golang:1.25
+    commands:
+      - VERSION=${CI_COMMIT_TAG}
+      - echo "Building terraform-provider-pihole-v6 $VERSION for all platforms"
+      - mkdir -p dist
+
+      # Linux amd64
+      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_linux_amd64"
+      # Linux arm64
+      - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_linux_arm64"
+      # macOS amd64
+      - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_darwin_amd64"
+      # macOS arm64
+      - GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_darwin_arm64"
+      # Windows amd64
+      - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/terraform-provider-pihole-v6_${VERSION}_windows_amd64.exe"
+
+      # Create zip archives (Terraform expects zipped providers)
+      - apt-get update -qq && apt-get install -y -qq zip > /dev/null 2>&1
+      - cd dist
+      - |
+        for f in terraform-provider-pihole-v6_${VERSION}_*; do
+          if [ "${f%.exe}" != "$f" ]; then
+            zip "${f%.exe}.zip" "$f"
+          else
+            zip "${f}.zip" "$f"
+          fi
+        done
+      - cd ..
+
+      # Generate SHA256SUMS
+      - cd dist && sha256sum *.zip > "terraform-provider-pihole-v6_${VERSION}_SHA256SUMS" && cd ..
+
+      # Copy registry manifest
+      - cp terraform-registry-manifest.json "dist/terraform-provider-pihole-v6_${VERSION}_manifest.json"
+
+      - echo "Built artifacts:"
+      - ls -la dist/
+
+  - name: create-release
+    image: golang:1.25
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - VERSION=${CI_COMMIT_TAG}
+      # Install gh CLI
+      - apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
+      - curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg
+      - echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list
+      - apt-get update -qq && apt-get install -y -qq gh > /dev/null 2>&1
+
+      # Install cog for changelog
+      - curl -sL https://github.com/cocogitto/cocogitto/releases/download/6.2.0/cocogitto-6.2.0-x86_64-unknown-linux-musl.tar.gz | tar xz -C /tmp
+      - mv /tmp/x86_64-unknown-linux-musl/cog /usr/local/bin/
+      - git config --global --add safe.directory "$CI_WORKSPACE"
+
+      # Create release with changelog
+      - RELEASE_NOTES=$(cog changelog --at "$VERSION" 2>/dev/null || echo "Release $VERSION")
+      - gh release create "$VERSION" --repo ${CI_REPO} --title "terraform-provider-pihole-v6 $VERSION" --notes "$RELEASE_NOTES" 2>/dev/null || echo "Release exists"
+      - gh release upload "$VERSION" dist/*.zip dist/*SHA256SUMS dist/*manifest.json --repo ${CI_REPO} --clobber
+      - echo "Release $VERSION published with all platform binaries"
+    depends_on: [build-all-platforms]

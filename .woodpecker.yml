@@ -32,15 +32,16 @@ steps:
       PIHOLE_PASSWORD: test-password
       TF_ACC: 1
     commands:
-      # Wait for PiHole to be ready
+      # Wait for PiHole to be ready (unauthenticated /api/auth returns 401 when ready)
       - |
         echo "Waiting for PiHole..."
-        for i in $(seq 1 30); do
-          if curl -sf http://pihole:80/api/auth > /dev/null 2>&1; then
-            echo "PiHole is ready"
+        for i in $(seq 1 60); do
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://pihole:80/api/auth 2>/dev/null)
+          if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "200" ]; then
+            echo "PiHole is ready (HTTP $HTTP_CODE)"
             break
           fi
-          echo "Attempt $i/30..."
+          echo "Attempt $i/60 (HTTP $HTTP_CODE)..."
           sleep 5
         done
       - go test -v -timeout 30m ./internal/provider/ -count=1

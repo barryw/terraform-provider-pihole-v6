@@ -1,244 +1,196 @@
-# terraform-provider-pihole-v6
+# Terraform Provider for Pi-hole v6
 
-[![CI](https://github.com/barryw/terraform-provider-pihole-v6/actions/workflows/ci.yml/badge.svg)](https://github.com/barryw/terraform-provider-pihole-v6/actions/workflows/ci.yml)
-[![Release](https://github.com/barryw/terraform-provider-pihole-v6/actions/workflows/release.yml/badge.svg)](https://github.com/barryw/terraform-provider-pihole-v6/actions/workflows/release.yml)
-[![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://opensource.org/licenses/MPL-2.0)
+Manage your [Pi-hole](https://pi-hole.net/) v6 infrastructure as code. This provider communicates with Pi-hole's v6 REST API to manage DNS records, CNAME records, groups, adlists, domain allow/deny lists, client assignments, and configuration settings.
 
-A Terraform/OpenTofu provider for managing [Pi-hole](https://pi-hole.net/) v6 configuration through its API. Built from scratch on the [Terraform Plugin Framework](https://developer.hashicorp.com/terraform/plugin/framework).
+Built from scratch on the [Terraform Plugin Framework](https://developer.hashicorp.com/terraform/plugin/framework) targeting **Pi-hole v6 exclusively**.
 
-This provider targets **Pi-hole v6 exclusively**. It is not compatible with Pi-hole v5 or earlier.
+## Why this provider?
 
-## Requirements
+Existing Pi-hole Terraform providers target the legacy v5 PHP API or have broken CSRF handling with v6. This provider was purpose-built for Pi-hole v6's new Go-based API (pihole-FTL) with proper session management and full resource coverage.
 
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.6 or [OpenTofu](https://opentofu.org/) >= 1.6
-- Pi-hole v6 with an [app-password](https://docs.pi-hole.net/api/auth/) configured
-- **`app_sudo` must be enabled** on each Pi-hole instance (see below)
-- Go >= 1.25 (only for building from source)
+## Features
 
-### Enabling `app_sudo`
-
-By default, app-password sessions are read-only. This provider requires write access, so you must enable `app_sudo` on each Pi-hole instance. Without it, all write operations fail with `403 Forbidden`.
-
-**Via CLI on the Pi-hole host:**
-```bash
-sudo pihole-FTL --config webserver.api.app_sudo true
-```
-
-**Via the web UI:** Settings > API > "Allow app-password authenticated sessions to extend sudo"
-
-**Via `pihole.toml`:**
-```toml
-[webserver.api]
-  app_sudo = true
-```
-
-> **Note:** `app_sudo` is a separate setting from `allow_destructive`. You need `app_sudo = true` even if `allow_destructive` is already enabled.
-
-## Installation
-
-Add the provider to your `required_providers` block:
-
-```hcl
-terraform {
-  required_providers {
-    pihole = {
-      source = "barryw/pihole-v6"
-    }
-  }
-}
-```
-
-## Provider Configuration
-
-The provider requires a Pi-hole URL and app-password. These can be set directly in the provider block or via environment variables.
-
-```hcl
-provider "pihole" {
-  url      = "http://192.168.1.1:8080"
-  password = var.pihole_password
-}
-```
-
-### Environment Variables
-
-| Variable | Description |
-|---|---|
-| `PIHOLE_URL` | Base URL of the Pi-hole instance (e.g. `http://192.168.1.1:8080`) |
-| `PIHOLE_PASSWORD` | App-password for the Pi-hole API |
-
-Environment variables are used as fallbacks when the corresponding provider attribute is not set.
-
-### Multiple Instances
-
-Use provider aliases to manage multiple Pi-hole instances:
-
-```hcl
-provider "pihole" {
-  url      = "http://192.168.1.1:8080"
-  password = var.pihole_password_primary
-}
-
-provider "pihole" {
-  alias    = "secondary"
-  url      = "http://192.168.1.2:8080"
-  password = var.pihole_password_secondary
-}
-```
-
-## Quick Start
-
-This example manages DNS records on two Pi-hole instances:
-
-```hcl
-terraform {
-  required_providers {
-    pihole = {
-      source = "barryw/pihole-v6"
-    }
-  }
-}
-
-variable "pihole_password" {
-  type      = string
-  sensitive = true
-}
-
-provider "pihole" {
-  url      = "http://192.168.1.1:8080"
-  password = var.pihole_password
-}
-
-provider "pihole" {
-  alias    = "secondary"
-  url      = "http://192.168.1.2:8080"
-  password = var.pihole_password
-}
-
-# Create a group for IoT devices
-resource "pihole_group" "iot" {
-  name    = "IoT Devices"
-  comment = "Group for IoT device filtering"
-}
-
-# Add a local DNS record on the primary instance
-resource "pihole_dns_record" "nas" {
-  domain = "nas.home.lan"
-  ip     = "192.168.1.100"
-}
-
-# Add the same record on the secondary instance
-resource "pihole_dns_record" "nas_secondary" {
-  provider = pihole.secondary
-  domain   = "nas.home.lan"
-  ip       = "192.168.1.100"
-}
-
-# Add a CNAME alias
-resource "pihole_cname_record" "files" {
-  domain = "files.home.lan"
-  target = "nas.home.lan"
-}
-
-# Block a domain
-resource "pihole_domain_list" "block_ads" {
-  domain = "ads.example.com"
-  type   = "deny"
-  kind   = "exact"
-}
-
-# Add an adlist
-resource "pihole_adlist" "steven_black" {
-  address = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-  type    = "block"
-  comment = "Steven Black unified hosts"
-}
-
-# Register a client
-resource "pihole_client" "living_room_tv" {
-  client  = "192.168.1.50"
-  comment = "Living room smart TV"
-  groups  = [0]
-}
-```
+- **7 resources** with full CRUD, import, and drift detection
+- **13 data sources** (singular lookup + plural list for every resource type)
+- **Multi-instance support** via provider aliases — manage multiple Pi-holes in a single config
+- **Generic settings management** via `pihole_setting` — configure any Pi-hole setting by dot-notation path
+- **Idempotent operations** — safe to re-apply, handles already-existing records gracefully
+- **Automatic session management** — authenticates once per provider instance, retries on transient errors
 
 ## Resources
 
 | Resource | Description |
 |---|---|
-| [pihole_dns_record](docs/resources/dns_record.md) | Manages a local DNS A/AAAA record |
-| [pihole_cname_record](docs/resources/cname_record.md) | Manages a local CNAME record |
-| [pihole_group](docs/resources/group.md) | Manages a Pi-hole group |
-| [pihole_adlist](docs/resources/adlist.md) | Manages an adlist (block or allow list URL) |
-| [pihole_domain_list](docs/resources/domain_list.md) | Manages a domain list entry (allow/deny, exact/regex) |
-| [pihole_client](docs/resources/client.md) | Manages a client definition |
+| `pihole_dns_record` | Local DNS A/AAAA records |
+| `pihole_cname_record` | Local CNAME records with optional TTL |
+| `pihole_group` | Groups for organizing clients and lists |
+| `pihole_adlist` | Block/allow list URLs |
+| `pihole_domain_list` | Domain allow/deny entries (exact or regex) |
+| `pihole_client` | Client assignments by IP, MAC, or CIDR |
+| `pihole_setting` | Any Pi-hole configuration setting by path |
 
 ## Data Sources
 
+Every resource has both a singular (lookup by key) and plural (list all) data source:
+
 | Data Source | Description |
 |---|---|
-| [pihole_dns_record](docs/data-sources/dns_record.md) | Fetches a single DNS record by domain |
-| [pihole_dns_records](docs/data-sources/dns_records.md) | Fetches all DNS records |
-| [pihole_cname_record](docs/data-sources/cname_record.md) | Fetches a single CNAME record by domain |
-| [pihole_cname_records](docs/data-sources/cname_records.md) | Fetches all CNAME records |
-| [pihole_group](docs/data-sources/group.md) | Fetches a single group by name |
-| [pihole_groups](docs/data-sources/groups.md) | Fetches all groups |
-| [pihole_adlist](docs/data-sources/adlist.md) | Fetches a single adlist by address |
-| [pihole_adlists](docs/data-sources/adlists.md) | Fetches all adlists |
-| [pihole_domain_list](docs/data-sources/domain_list.md) | Fetches a single domain list entry |
-| [pihole_domain_lists](docs/data-sources/domain_lists.md) | Fetches all domain list entries (with optional filters) |
-| [pihole_client](docs/data-sources/client.md) | Fetches a single client by identifier |
-| [pihole_clients](docs/data-sources/clients.md) | Fetches all clients |
+| `pihole_dns_record` / `pihole_dns_records` | Read DNS records |
+| `pihole_cname_record` / `pihole_cname_records` | Read CNAME records |
+| `pihole_group` / `pihole_groups` | Read groups |
+| `pihole_adlist` / `pihole_adlists` | Read adlists |
+| `pihole_domain_list` / `pihole_domain_lists` | Read domain entries (with optional type/kind filters) |
+| `pihole_client` / `pihole_clients` | Read client assignments |
+| `pihole_setting` | Read any configuration setting |
+
+## Quick Start
+
+```hcl
+terraform {
+  required_providers {
+    pihole = {
+      source  = "barryw/pihole-v6"
+      version = "~> 0.1"
+    }
+  }
+}
+
+provider "pihole" {
+  url      = "http://192.168.1.1:8080"
+  password = var.pihole_password
+}
+
+# Manage DNS records across your network
+resource "pihole_dns_record" "nas" {
+  domain = "nas.home.lan"
+  ip     = "192.168.1.100"
+}
+
+resource "pihole_cname_record" "files" {
+  domain = "files.home.lan"
+  target = "nas.home.lan"
+}
+
+# Organize devices into groups
+resource "pihole_group" "iot" {
+  name    = "IoT Devices"
+  comment = "Restricted DNS for IoT"
+}
+
+# Manage blocklists
+resource "pihole_adlist" "steven_black" {
+  address = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+  type    = "block"
+  comment = "Steven Black unified hosts"
+  groups  = [0]
+}
+
+# Configure Pi-hole settings
+resource "pihole_setting" "cache_size" {
+  key   = "dns.cache.size"
+  value = jsonencode(20000)
+}
+```
+
+## Multi-Instance Management
+
+Use provider aliases to keep multiple Pi-hole instances in sync:
+
+```hcl
+provider "pihole" {
+  alias    = "primary"
+  url      = "http://192.168.1.1:8080"
+  password = var.pihole_password
+}
+
+provider "pihole" {
+  alias    = "secondary"
+  url      = "http://192.168.1.2:8080"
+  password = var.pihole_password
+}
+
+locals {
+  dns_records = {
+    "nas.lan"     = "192.168.1.100"
+    "printer.lan" = "192.168.1.101"
+    "camera.lan"  = "192.168.1.102"
+  }
+}
+
+resource "pihole_dns_record" "primary" {
+  for_each = local.dns_records
+  provider = pihole.primary
+  domain   = each.key
+  ip       = each.value
+}
+
+resource "pihole_dns_record" "secondary" {
+  for_each = local.dns_records
+  provider = pihole.secondary
+  domain   = each.key
+  ip       = each.value
+}
+```
+
+## Prerequisites
+
+Before using this provider, each Pi-hole instance needs:
+
+1. **An app-password** — generate one in Pi-hole web UI under Settings > API
+2. **`app_sudo` enabled** — required for write operations
+
+```bash
+# Enable via CLI
+sudo pihole-FTL --config webserver.api.app_sudo true
+
+# Or via pihole.toml
+# [webserver.api]
+#   app_sudo = true
+```
+
+> **Note:** Without `app_sudo`, all write operations fail with `403 Forbidden`. This is separate from `allow_destructive`.
 
 ## Import
 
-All resources support `terraform import`. The import ID format varies by resource type:
+All resources support `terraform import`:
 
 ```shell
-# DNS record: domain:ip
-terraform import pihole_dns_record.example "nas.home.lan:192.168.1.100"
-
-# CNAME record: domain:target
-terraform import pihole_cname_record.example "files.home.lan:nas.home.lan"
-
-# Group: group name
+terraform import pihole_dns_record.example "nas.lan:192.168.1.100"
+terraform import pihole_cname_record.example "files.lan:nas.lan"
 terraform import pihole_group.example "IoT Devices"
-
-# Adlist: the adlist URL
-terraform import pihole_adlist.example "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-
-# Domain list entry: type:kind:domain
+terraform import pihole_adlist.example "https://example.com/blocklist.txt"
 terraform import pihole_domain_list.example "deny:exact:ads.example.com"
-
-# Client: the client identifier
 terraform import pihole_client.example "192.168.1.50"
+terraform import pihole_setting.example "dns.cache.size"
 ```
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `PIHOLE_URL` | Base URL (fallback when `url` is not set) |
+| `PIHOLE_PASSWORD` | App-password (fallback when `password` is not set) |
 
 ## Development
 
-### Building from Source
-
 ```shell
+# Build
 git clone https://github.com/barryw/terraform-provider-pihole-v6.git
 cd terraform-provider-pihole-v6
 go build -o terraform-provider-pihole-v6
-```
 
-### Running Tests
-
-```shell
+# Unit tests
 go test ./...
-```
 
-### Acceptance Tests
-
-Acceptance tests run against a real Pi-hole v6 instance. Set the required environment variables before running:
-
-```shell
-export PIHOLE_URL="http://localhost:8080"
-export PIHOLE_PASSWORD="your-app-password"
-TF_ACC=1 go test ./internal/provider/ -v
+# Acceptance tests (requires a running Pi-hole v6)
+docker compose up -d --wait
+PIHOLE_URL=http://localhost:18080 PIHOLE_PASSWORD=test-password TF_ACC=1 go test ./internal/provider/ -v
 ```
 
 ## License
 
 [Mozilla Public License 2.0](LICENSE)
+
+## Related
+
+- [go-pihole](https://github.com/barryw/go-pihole) — standalone Go client library for the Pi-hole v6 API (used by this provider)

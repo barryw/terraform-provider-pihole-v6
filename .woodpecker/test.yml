@@ -1,8 +1,8 @@
-labels:
-  platform: linux/amd64
-
 when:
   - event: [push, pull_request, manual]
+
+labels:
+  platform: linux/amd64
 
 services:
   pihole-test:
@@ -17,18 +17,18 @@ services:
       - 80
 
 steps:
-  lint:
+  - name: lint
     image: golang:1.25
     commands:
       - go vet ./...
 
-  unit-test:
+  - name: unit-test
     image: golang:1.25
     commands:
       - go test -v -count=1 ./...
     depends_on: [lint]
 
-  acceptance-test:
+  - name: acceptance-test
     image: golang:1.25
     environment:
       PIHOLE_URL: http://pihole-test:80
@@ -36,7 +36,6 @@ steps:
       TF_ACC: 1
     commands:
       - apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
-      # Wait for PiHole API to be ready (returns 401 when API is up)
       - |
         echo "Waiting for PiHole API..."
         for i in $(seq 1 90); do
@@ -47,8 +46,6 @@ steps:
           fi
           if [ "$i" = "90" ]; then
             echo "PiHole failed to become ready after 90 attempts"
-            echo "Last HTTP code: $HTTP_CODE"
-            curl -v http://pihole-test:80/ 2>&1 || true
             exit 1
           fi
           sleep 3

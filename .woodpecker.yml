@@ -1,0 +1,47 @@
+labels:
+  platform: linux/amd64
+
+when:
+  - event: [push, pull_request, manual]
+
+services:
+  pihole:
+    image: pihole/pihole:latest
+    environment:
+      FTLCONF_webserver_api_password: test-password
+      FTLCONF_webserver_api_app_sudo: "true"
+    ports:
+      - 80
+
+steps:
+  lint:
+    image: golang:1.24
+    commands:
+      - go vet ./...
+
+  unit-test:
+    image: golang:1.24
+    commands:
+      - go test -v -count=1 ./...
+    depends_on: [lint]
+
+  acceptance-test:
+    image: golang:1.24
+    environment:
+      PIHOLE_URL: http://pihole:80
+      PIHOLE_PASSWORD: test-password
+      TF_ACC: 1
+    commands:
+      # Wait for PiHole to be ready
+      - |
+        echo "Waiting for PiHole..."
+        for i in $(seq 1 30); do
+          if curl -sf http://pihole:80/api/auth > /dev/null 2>&1; then
+            echo "PiHole is ready"
+            break
+          fi
+          echo "Attempt $i/30..."
+          sleep 5
+        done
+      - go test -v -timeout 30m ./internal/provider/ -count=1
+    depends_on: [unit-test]

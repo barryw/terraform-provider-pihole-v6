@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	pihole "github.com/barryw/go-pihole"
@@ -95,6 +96,14 @@ func (p *PiholeProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	client, err := pihole.NewClient(url, password)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create PiHole client", err.Error())
+		return
+	}
+
+	// Authenticate eagerly to avoid rate limiting when Terraform
+	// makes many parallel requests with the same provider instance.
+	if err := client.Authenticate(); err != nil {
+		resp.Diagnostics.AddError("Failed to authenticate with PiHole",
+			fmt.Sprintf("URL: %s — %s", url, err.Error()))
 		return
 	}
 

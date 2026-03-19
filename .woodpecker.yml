@@ -7,11 +7,11 @@ when:
 services:
   pihole:
     image: pihole/pihole:latest
-    privileged: true
     environment:
       FTLCONF_webserver_api_password: test-password
       FTLCONF_webserver_api_app_sudo: "true"
       DNSMASQ_LISTENING: all
+      PIHOLE_DNS_: "8.8.8.8"
     ports:
       - 80
 
@@ -36,6 +36,7 @@ steps:
     commands:
       - apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
       # Wait for PiHole API to be ready (returns 401 when API is up)
+      # PiHole can take 2-3 minutes to fully initialize in CI
       - |
         echo "Waiting for PiHole API..."
         for i in $(seq 1 90); do
@@ -45,8 +46,10 @@ steps:
             break
           fi
           if [ "$i" = "90" ]; then
-            echo "PiHole failed to start after 90 attempts"
+            echo "PiHole failed to become ready after 90 attempts"
+            echo "Last HTTP code: $HTTP_CODE"
             curl -v http://pihole:80/ 2>&1 || true
+            curl -v http://pihole:80/api/auth 2>&1 || true
             exit 1
           fi
           sleep 3

@@ -12,7 +12,27 @@ This provider targets **Pi-hole v6 exclusively**. It is not compatible with Pi-h
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.6 or [OpenTofu](https://opentofu.org/) >= 1.6
 - Pi-hole v6 with an [app-password](https://docs.pi-hole.net/api/auth/) configured
+- **`app_sudo` must be enabled** on each Pi-hole instance (see below)
 - Go >= 1.25 (only for building from source)
+
+### Enabling `app_sudo`
+
+By default, app-password sessions are read-only. This provider requires write access, so you must enable `app_sudo` on each Pi-hole instance. Without it, all write operations fail with `403 Forbidden`.
+
+**Via CLI on the Pi-hole host:**
+```bash
+sudo pihole-FTL --config webserver.api.app_sudo true
+```
+
+**Via the web UI:** Settings > API > "Allow app-password authenticated sessions to extend sudo"
+
+**Via `pihole.toml`:**
+```toml
+[webserver.api]
+  app_sudo = true
+```
+
+> **Note:** `app_sudo` is a separate setting from `allow_destructive`. You need `app_sudo = true` even if `allow_destructive` is already enabled.
 
 ## Installation
 

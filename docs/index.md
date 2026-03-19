@@ -11,6 +11,35 @@ The PiHole provider allows you to manage [Pi-hole](https://pi-hole.net/) v6 conf
 
 This provider targets Pi-hole v6 exclusively and requires an app-password for authentication.
 
+## Prerequisites
+
+Before using this provider, you must configure two settings on each Pi-hole instance:
+
+### 1. Create an App-Password
+
+In the Pi-hole web UI, go to **Settings > API > App password** and generate a new app-password. Copy the password string — this is what you pass to the provider's `password` field.
+
+### 2. Enable `app_sudo`
+
+By default, app-password sessions are **read-only** and cannot modify Pi-hole configuration. You must enable `app_sudo` to allow write operations (creating, updating, and deleting resources).
+
+**Via the Pi-hole web UI:** Settings > API > Check "Allow app-password authenticated sessions to extend sudo"
+
+**Via the CLI on the Pi-hole host:**
+```bash
+pihole-FTL --config webserver.api.app_sudo true
+```
+
+**Via `pihole.toml`:**
+```toml
+[webserver.api]
+  app_sudo = true
+```
+
+~> **Important:** Without `app_sudo` enabled, all write operations will fail with a `403 Forbidden` error: *"Unable to change configuration (read-only) — The current app session is not allowed to modify Pi-hole config settings (webserver.api.app_sudo is false)"*
+
+Note: `app_sudo` is a separate setting from `allow_destructive`. You need `app_sudo = true` even if `allow_destructive` is already enabled.
+
 ## Example Usage
 
 ```terraform

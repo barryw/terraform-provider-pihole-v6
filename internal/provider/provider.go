@@ -119,6 +119,7 @@ func (p *PiholeProvider) Resources(_ context.Context) []func() resource.Resource
 		NewAdlistResource,
 		NewDomainListResource,
 		NewClientResource,
+		NewSettingResource,
 	}
 }
 
@@ -136,5 +137,6 @@ func (p *PiholeProvider) DataSources(_ context.Context) []func() datasource.Data
 		NewDomainListsDataSource,
 		NewClientDataSource,
 		NewClientsDataSource,
+		NewSettingDataSource,
 	}
 }

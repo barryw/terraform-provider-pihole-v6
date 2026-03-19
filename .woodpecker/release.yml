@@ -39,24 +39,27 @@ steps:
         GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_windows_amd64.exe
 
         apt-get update -qq && apt-get install -y -qq zip gnupg > /dev/null 2>&1
+
+        # Copy manifest into dist before zipping
+        cp terraform-registry-manifest.json dist/"$NAME"_"$VERSION"_manifest.json
+
         cd dist
-        ls -la
         for f in "$NAME"_"$VERSION"_*; do
+          case "$f" in *.json) continue ;; esac
           base=$(echo "$f" | sed 's/\.exe$//')
           zip "$base.zip" "$f"
           rm "$f"
         done
-        cd ..
-        cp terraform-registry-manifest.json dist/"$NAME"_"$VERSION"_manifest.json
-        cd dist
 
+        # Hash everything: zips + manifest
         sha256sum *.zip "$NAME"_"$VERSION"_manifest.json > "$NAME"_"$VERSION"_SHA256SUMS
 
+        # GPG sign
         echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null
         gpg --batch --local-user "$GPG_FINGERPRINT" --detach-sign "$NAME"_"$VERSION"_SHA256SUMS
 
         echo "Artifacts:"
-        ls -la dist/
+        ls -la
 
   - name: create-release
     image: ghcr.io/cocogitto/cog:latest

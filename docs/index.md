@@ -1,5 +1,6 @@
 ---
-page_title: "Pi-hole v6 Provider"
+layout: ""
+page_title: "Provider: Pi-hole v6"
 subcategory: ""
 description: |-
   Manage Pi-hole v6 DNS, groups, adlists, clients, and settings as infrastructure-as-code.

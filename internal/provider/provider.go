@@ -119,6 +119,7 @@ func (p *PiholeProvider) Resources(_ context.Context) []func() resource.Resource
 		NewAdlistResource,
 		NewDomainListResource,
 		NewClientResource,
+		NewDHCPStaticLeaseResource,
 		NewSettingResource,
 	}
 }

@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file. See [conven
 - specify remote and branch in bump push command - (8a6ba16) - Barry Walker
 - bump go-pihole to include DHCP restart=false fix - (af78f54) - Barry Walker
 - default domain_list groups to [0] when unspecified - (eea57d2) - Barry Walker
+#### Miscellaneous
+- (**version**) v0.1.4 - (c0c2730) - Woodpecker CI
+
+- - -
+
+## v0.1.4 - 2026-03-22
+#### Bug Fixes
+- specify remote and branch in bump push command - (8a6ba16) - Barry Walker
+- bump go-pihole to include DHCP restart=false fix - (af78f54) - Barry Walker
+- default domain_list groups to [0] when unspecified - (eea57d2) - Barry Walker
 
 - - -
 

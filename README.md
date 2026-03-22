@@ -198,3 +198,4 @@ PIHOLE_URL=http://localhost:18080 PIHOLE_PASSWORD=test-password TF_ACC=1 go test
 ## Related
 
 - [go-pihole](https://github.com/barryw/go-pihole) — standalone Go client library for the Pi-hole v6 API (used by this provider)
+

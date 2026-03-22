@@ -46,9 +46,6 @@ func (r *DHCPStaticLeaseResource) Schema(_ context.Context, _ resource.SchemaReq
 			"id": schema.StringAttribute{
 				Description: "Composite ID in format mac:ip.",
 				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"mac": schema.StringAttribute{
 				Description: "The MAC address of the device.",

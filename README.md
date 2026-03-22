@@ -1,3 +1,7 @@
+[![Build Status](https://ci.barrywalker.io/api/badges/49/status.svg)](https://ci.barrywalker.io/repos/49)
+[![Latest Release](https://img.shields.io/github/v/release/barryw/terraform-provider-pihole-v6)](https://github.com/barryw/terraform-provider-pihole-v6/releases/latest)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-blue.svg)](https://opensource.org/licenses/MPL-2.0)
+
 # Terraform Provider for Pi-hole v6
 
 Manage your [Pi-hole](https://pi-hole.net/) v6 infrastructure as code. This provider communicates with Pi-hole's v6 REST API to manage DNS records, CNAME records, groups, adlists, domain allow/deny lists, client assignments, and configuration settings.

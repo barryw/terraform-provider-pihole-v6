@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.2 - 2026-03-22
+#### Bug Fixes
+- remove trailing whitespace from README - (cdbe8f9) - Barry Walker
+#### Refactoring
+- replace bump+release pipelines with woodpecker-release plugin - (c4b6cf2) - Barry Walker
+
+- - -
+
 ## v0.2.1 - 2026-03-22
 #### Bug Fixes
 - push tags explicitly instead of using --follow-tags - (5a294ce) - Barry Walker

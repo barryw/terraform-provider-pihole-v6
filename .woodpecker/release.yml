@@ -1,5 +1,5 @@
 when:
-  - event: tag
+  - event: push
     branch: main
 
 labels:
@@ -10,73 +10,25 @@ clone:
     image: woodpeckerci/plugin-git
     settings:
       tags: true
+      depth: 0
+
+depends_on:
+  - test
+  - commits
 
 steps:
-  - name: build-and-sign
-    image: golang:1.25
+  - name: release
+    image: ghcr.io/barryw/woodpecker-release:go
     environment:
-      GPG_PRIVATE_KEY:
-        from_secret: gpg_private_key
-      GPG_FINGERPRINT:
-        from_secret: gpg_fingerprint
-    commands:
-      - |
-        git fetch --tags 2>/dev/null || true
-        TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-        VERSION=$(echo "$TAG" | sed 's/^v//')
-        NAME="terraform-provider-pihole-v6"
-        echo "Tag: $TAG / Version: $VERSION / Name: $NAME"
-        echo "$TAG" > .tag
-        echo "$VERSION" > .version
-        echo "$NAME" > .name
-        mkdir -p dist
-
-        echo "Building all platforms..."
-        GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_linux_amd64
-        GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_linux_arm64
-        GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_darwin_amd64
-        GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_darwin_arm64
-        GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "dist/$NAME"_"$VERSION"_windows_amd64.exe
-
-        apt-get update -qq && apt-get install -y -qq zip gnupg > /dev/null 2>&1
-
-        # Copy manifest into dist before zipping
-        cp terraform-registry-manifest.json dist/"$NAME"_"$VERSION"_manifest.json
-
-        cd dist
-        for f in "$NAME"_"$VERSION"_*; do
-          case "$f" in *.json) continue ;; esac
-          base=$(echo "$f" | sed 's/\.exe$//')
-          zip "$base.zip" "$f"
-          rm "$f"
-        done
-
-        # Hash everything: zips + manifest
-        sha256sum *.zip "$NAME"_"$VERSION"_manifest.json > "$NAME"_"$VERSION"_SHA256SUMS
-
-        # GPG sign
-        echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null
-        gpg --batch --local-user "$GPG_FINGERPRINT" --detach-sign "$NAME"_"$VERSION"_SHA256SUMS
-
-        echo "Artifacts:"
-        ls -la
-
-  - name: create-release
-    image: ghcr.io/cocogitto/cog:latest
-    environment:
-      GITHUB_TOKEN:
+      PLUGIN_GITHUB_TOKEN:
         from_secret: github_token
-    commands:
-      - |
-        TAG=$(cat .tag)
-        VERSION=$(cat .version)
-        NAME=$(cat .name)
-        echo "Publishing release $TAG"
-        apk add --no-cache github-cli > /dev/null 2>&1
-        git config --global --add safe.directory "$CI_WORKSPACE"
-
-        RELEASE_NOTES=$(cog changelog --at "$TAG" 2>/dev/null || echo "Release $TAG")
-        gh release create "$TAG" --repo "$CI_REPO" --title "$NAME $TAG" --notes "$RELEASE_NOTES" 2>/dev/null || echo "Release already exists"
-        gh release upload "$TAG" dist/*.zip dist/*SHA256SUMS dist/*SHA256SUMS.sig dist/*manifest.json --repo "$CI_REPO" --clobber
-        echo "Release $TAG published with signed artifacts"
-    depends_on: [build-and-sign]
+      PLUGIN_GPG_KEY:
+        from_secret: gpg_private_key
+      PLUGIN_GPG_FINGERPRINT:
+        from_secret: gpg_fingerprint
+      PLUGIN_MODE: release-go
+      PLUGIN_GIT_EMAIL: ci@barrywalker.io
+      PLUGIN_GO_PLATFORMS: "linux/amd64,linux/arm64,darwin/amd64,darwin/arm64,windows/amd64"
+      PLUGIN_GO_BINARY_NAME: terraform-provider-pihole-v6
+      PLUGIN_GPG_SIGN: "true"
+      PLUGIN_TERRAFORM_MANIFEST: "true"

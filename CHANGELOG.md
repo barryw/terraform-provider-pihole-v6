@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.1 - 2026-03-22
+#### Bug Fixes
+- push tags explicitly instead of using --follow-tags - (5a294ce) - Barry Walker
+
+- - -
+
 ## v0.2.0 - 2026-03-22
 #### Features
 - add DHCP static lease update and data sources - (42dc4d2) - Barry Walker

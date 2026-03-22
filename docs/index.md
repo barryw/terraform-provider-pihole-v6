@@ -69,3 +69,4 @@ variable "pihole_password" {
   sensitive = true
 }
 ```
+

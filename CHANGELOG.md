@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.0 - 2026-03-22
+#### Features
+- add DHCP static lease update and data sources - (42dc4d2) - Barry Walker
+#### Bug Fixes
+- remove UseStateForUnknown from DHCP lease id - (e2eff40) - Barry Walker
+
+- - -
+
 ## v0.1.4 - 2026-03-22
 #### Bug Fixes
 - specify remote and branch in bump push command - (8a6ba16) - Barry Walker

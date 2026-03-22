@@ -116,15 +116,18 @@ func (r *DomainListResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	var groups []int
+	groups := []int{0} // Default to group 0 (Default group)
 	if !plan.Groups.IsNull() && !plan.Groups.IsUnknown() {
 		var g []int64
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &g, false)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		for _, v := range g {
-			groups = append(groups, int(v))
+		if len(g) > 0 {
+			groups = make([]int, len(g))
+			for i, v := range g {
+				groups[i] = int(v)
+			}
 		}
 	}
 
@@ -150,8 +153,12 @@ func (r *DomainListResource) Create(ctx context.Context, req resource.CreateRequ
 	plan.Comment = types.StringValue(entry.Comment)
 	plan.Enabled = types.BoolValue(entry.Enabled)
 
-	groupValues := make([]types.Int64, len(entry.Groups))
-	for i, g := range entry.Groups {
+	entryGroups := entry.Groups
+	if len(entryGroups) == 0 {
+		entryGroups = []int{0}
+	}
+	groupValues := make([]types.Int64, len(entryGroups))
+	for i, g := range entryGroups {
 		groupValues[i] = types.Int64Value(int64(g))
 	}
 	groupsList, diags := types.ListValueFrom(ctx, types.Int64Type, groupValues)
@@ -188,8 +195,12 @@ func (r *DomainListResource) Read(ctx context.Context, req resource.ReadRequest,
 	state.Comment = types.StringValue(entry.Comment)
 	state.Enabled = types.BoolValue(entry.Enabled)
 
-	groupValues := make([]types.Int64, len(entry.Groups))
-	for i, g := range entry.Groups {
+	entryGroups := entry.Groups
+	if len(entryGroups) == 0 {
+		entryGroups = []int{0}
+	}
+	groupValues := make([]types.Int64, len(entryGroups))
+	for i, g := range entryGroups {
 		groupValues[i] = types.Int64Value(int64(g))
 	}
 	groupsList, diags := types.ListValueFrom(ctx, types.Int64Type, groupValues)
@@ -209,15 +220,18 @@ func (r *DomainListResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	var groups []int
+	groups := []int{0} // Default to group 0 (Default group)
 	if !plan.Groups.IsNull() && !plan.Groups.IsUnknown() {
 		var g []int64
 		resp.Diagnostics.Append(plan.Groups.ElementsAs(ctx, &g, false)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		for _, v := range g {
-			groups = append(groups, int(v))
+		if len(g) > 0 {
+			groups = make([]int, len(g))
+			for i, v := range g {
+				groups[i] = int(v)
+			}
 		}
 	}
 
@@ -242,8 +256,12 @@ func (r *DomainListResource) Update(ctx context.Context, req resource.UpdateRequ
 	plan.Comment = types.StringValue(entry.Comment)
 	plan.Enabled = types.BoolValue(entry.Enabled)
 
-	groupValues := make([]types.Int64, len(entry.Groups))
-	for i, g := range entry.Groups {
+	entryGroups := entry.Groups
+	if len(entryGroups) == 0 {
+		entryGroups = []int{0}
+	}
+	groupValues := make([]types.Int64, len(entryGroups))
+	for i, g := range entryGroups {
 		groupValues[i] = types.Int64Value(int64(g))
 	}
 	groupsList, diags := types.ListValueFrom(ctx, types.Int64Type, groupValues)

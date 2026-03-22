@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.4 - 2026-03-22
+#### Bug Fixes
+- force pull plugin image to avoid stale cache - (8335a57) - Barry Walker
+
+- - -
+
 ## v0.2.3 - 2026-03-22
 #### Bug Fixes
 - normalize trailing newline in docs index - (091262c) - Barry Walker

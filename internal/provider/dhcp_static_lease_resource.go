@@ -60,17 +60,11 @@ func (r *DHCPStaticLeaseResource) Schema(_ context.Context, _ resource.SchemaReq
 			"ip": schema.StringAttribute{
 				Description: "The IP address to assign to the device.",
 				Required:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
 			},
 			"hostname": schema.StringAttribute{
 				Description: "Optional hostname for the device.",
 				Optional:    true,
 				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
 			},
 		},
 	}
@@ -138,8 +132,40 @@ func (r *DHCPStaticLeaseResource) Read(ctx context.Context, req resource.ReadReq
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (r *DHCPStaticLeaseResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
-	resp.Diagnostics.AddError("Update not supported", "DHCP static leases are immutable. Changes require replacement.")
+func (r *DHCPStaticLeaseResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan DHCPStaticLeaseResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var state DHCPStaticLeaseResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	oldLease := pihole.DHCPStaticLease{
+		MAC:      state.MAC.ValueString(),
+		IP:       state.IP.ValueString(),
+		Hostname: state.Hostname.ValueString(),
+	}
+	newLease := pihole.DHCPStaticLease{
+		MAC:      plan.MAC.ValueString(),
+		IP:       plan.IP.ValueString(),
+		Hostname: plan.Hostname.ValueString(),
+	}
+
+	if err := r.client.UpdateDHCPStaticLease(oldLease, newLease); err != nil {
+		resp.Diagnostics.AddError("Error updating DHCP static lease", err.Error())
+		return
+	}
+
+	plan.ID = types.StringValue(fmt.Sprintf("%s:%s", plan.MAC.ValueString(), plan.IP.ValueString()))
+	if plan.Hostname.IsNull() || plan.Hostname.IsUnknown() {
+		plan.Hostname = types.StringValue("")
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *DHCPStaticLeaseResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

@@ -138,6 +138,8 @@ func (p *PiholeProvider) DataSources(_ context.Context) []func() datasource.Data
 		NewDomainListsDataSource,
 		NewClientDataSource,
 		NewClientsDataSource,
+		NewDHCPStaticLeaseDataSource,
+		NewDHCPStaticLeasesDataSource,
 		NewSettingDataSource,
 	}
 }

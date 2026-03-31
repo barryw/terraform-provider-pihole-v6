@@ -40,7 +40,7 @@ func (r *DNSRecordResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (r *DNSRecordResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a local DNS record in PiHole.",
+		Description: "Manages a local DNS record in PiHole. Multiple records for the same domain with different IPs are supported.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "Composite ID in format domain:ip.",
@@ -104,19 +104,28 @@ func (r *DNSRecordResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	record, err := r.client.GetDNSRecord(state.Domain.ValueString())
+	// List all records and match by both domain AND IP to support multiple
+	// records for the same domain with different IPs (round-robin DNS).
+	records, err := r.client.ListDNSRecords()
 	if err != nil {
-		if _, ok := err.(*pihole.ErrNotFound); ok {
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError("Error reading DNS record", err.Error())
+		resp.Diagnostics.AddError("Error reading DNS records", err.Error())
 		return
 	}
 
-	state.Domain = types.StringValue(record.Domain)
-	state.IP = types.StringValue(record.IP)
-	state.ID = types.StringValue(fmt.Sprintf("%s:%s", record.Domain, record.IP))
+	var found bool
+	for _, r := range records {
+		if r.Domain == state.Domain.ValueString() && r.IP == state.IP.ValueString() {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	state.ID = types.StringValue(fmt.Sprintf("%s:%s", state.Domain.ValueString(), state.IP.ValueString()))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 

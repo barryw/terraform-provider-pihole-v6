@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.5 - 2026-03-31
+#### Bug Fixes
+- support multiple DNS records per domain for round-robin DNS - (b4e5e8f) - Barry Walker, *Claude Opus 4.6 (1M context)*
+#### Refactoring
+- replace pipeline files with config service template - (2e07f75) - Barry Walker
+
+- - -
+
 ## v0.2.4 - 2026-03-22
 #### Bug Fixes
 - force pull plugin image to avoid stale cache - (8335a57) - Barry Walker

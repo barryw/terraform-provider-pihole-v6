@@ -20,9 +20,9 @@ type DomainListsDataSource struct {
 }
 
 type DomainListsDataSourceModel struct {
-	Type    types.String            `tfsdk:"type"`
-	Kind    types.String            `tfsdk:"kind"`
-	Domains []DomainListEntryModel  `tfsdk:"domains"`
+	Type    types.String           `tfsdk:"type"`
+	Kind    types.String           `tfsdk:"kind"`
+	Domains []DomainListEntryModel `tfsdk:"domains"`
 }
 
 type DomainListEntryModel struct {
@@ -102,9 +102,9 @@ func (d *DomainListsDataSource) Read(ctx context.Context, req datasource.ReadReq
 	var err error
 
 	if !config.Type.IsNull() && !config.Kind.IsNull() {
-		entries, err = d.client.ListDomainsByTypeAndKind(config.Type.ValueString(), config.Kind.ValueString())
+		entries, err = d.client.ListDomainsByTypeAndKind(ctx, config.Type.ValueString(), config.Kind.ValueString())
 	} else {
-		entries, err = d.client.ListDomains()
+		entries, err = d.client.ListDomains(ctx)
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list domain entries", err.Error())

@@ -102,7 +102,7 @@ func (r *CNAMERecordResource) Create(ctx context.Context, req resource.CreateReq
 	target := plan.Target.ValueString()
 	ttl := int(plan.TTL.ValueInt64())
 
-	if err := r.client.CreateCNAMERecord(domain, target, ttl); err != nil {
+	if err := r.client.CreateCNAMERecord(ctx, domain, target, ttl); err != nil {
 		resp.Diagnostics.AddError("Error creating CNAME record", err.Error())
 		return
 	}
@@ -122,7 +122,7 @@ func (r *CNAMERecordResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	record, err := r.client.GetCNAMERecord(state.Domain.ValueString())
+	record, err := r.client.GetCNAMERecord(ctx, state.Domain.ValueString())
 	if err != nil {
 		var notFound *pihole.ErrNotFound
 		if errors.As(err, &notFound) {
@@ -159,7 +159,7 @@ func (r *CNAMERecordResource) Delete(ctx context.Context, req resource.DeleteReq
 	target := state.Target.ValueString()
 	ttl := int(state.TTL.ValueInt64())
 
-	if err := r.client.DeleteCNAMERecord(domain, target, ttl); err != nil {
+	if err := r.client.DeleteCNAMERecord(ctx, domain, target, ttl); err != nil {
 		resp.Diagnostics.AddError("Error deleting CNAME record", err.Error())
 		return
 	}

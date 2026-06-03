@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -64,6 +67,9 @@ func (r *DomainListResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"type": schema.StringAttribute{
 				Description: "The list type: allow or deny.",
 				Required:    true,
+				Validators: []validator.String{
+					stringOneOf("allow", "deny"),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -71,6 +77,9 @@ func (r *DomainListResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			"kind": schema.StringAttribute{
 				Description: "The match kind: exact or regex.",
 				Required:    true,
+				Validators: []validator.String{
+					stringOneOf("exact", "regex"),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -79,6 +88,7 @@ func (r *DomainListResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Description: "Optional comment for this domain entry.",
 				Optional:    true,
 				Computed:    true,
+				Default:     stringdefault.StaticString(""),
 			},
 			"groups": schema.ListAttribute{
 				Description: "List of group IDs this domain entry belongs to.",
@@ -140,7 +150,7 @@ func (r *DomainListResource) Create(ctx context.Context, req resource.CreateRequ
 		Enabled: plan.Enabled.ValueBool(),
 	}
 
-	entry, err := r.client.CreateDomain(createReq)
+	entry, err := r.client.CreateDomain(ctx, createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating domain list entry", err.Error())
 		return
@@ -178,9 +188,10 @@ func (r *DomainListResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	entry, err := r.client.GetDomain(state.Type.ValueString(), state.Kind.ValueString(), state.Domain.ValueString())
+	entry, err := r.client.GetDomain(ctx, state.Type.ValueString(), state.Kind.ValueString(), state.Domain.ValueString())
 	if err != nil {
-		if _, ok := err.(*pihole.ErrNotFound); ok {
+		var notFound *pihole.ErrNotFound
+		if errors.As(err, &notFound) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -243,7 +254,7 @@ func (r *DomainListResource) Update(ctx context.Context, req resource.UpdateRequ
 		Enabled: plan.Enabled.ValueBool(),
 	}
 
-	entry, err := r.client.UpdateDomain(plan.Type.ValueString(), plan.Kind.ValueString(), plan.Domain.ValueString(), updateReq)
+	entry, err := r.client.UpdateDomain(ctx, plan.Type.ValueString(), plan.Kind.ValueString(), plan.Domain.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating domain list entry", err.Error())
 		return
@@ -281,7 +292,7 @@ func (r *DomainListResource) Delete(ctx context.Context, req resource.DeleteRequ
 		return
 	}
 
-	err := r.client.DeleteDomain(state.Type.ValueString(), state.Kind.ValueString(), state.Domain.ValueString())
+	err := r.client.DeleteDomain(ctx, state.Type.ValueString(), state.Kind.ValueString(), state.Domain.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting domain list entry", err.Error())
 		return

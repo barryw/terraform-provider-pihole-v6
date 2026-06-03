@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	pihole "github.com/barryw/go-pihole"
@@ -9,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -60,6 +62,7 @@ func (r *ClientResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description: "Optional comment for the client.",
 				Optional:    true,
 				Computed:    true,
+				Default:     stringdefault.StaticString(""),
 			},
 			"groups": schema.ListAttribute{
 				Description: "List of group IDs the client belongs to.",
@@ -103,7 +106,7 @@ func (r *ClientResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 	}
 
-	created, err := r.apiClient.CreateClient(pihole.ClientCreateRequest{
+	created, err := r.apiClient.CreateClient(ctx, pihole.ClientCreateRequest{
 		Client:  plan.Client.ValueString(),
 		Comment: plan.Comment.ValueString(),
 		Groups:  groups,
@@ -138,9 +141,10 @@ func (r *ClientResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	client, err := r.apiClient.GetClient(state.Client.ValueString())
+	client, err := r.apiClient.GetClient(ctx, state.Client.ValueString())
 	if err != nil {
-		if _, ok := err.(*pihole.ErrNotFound); ok {
+		var notFound *pihole.ErrNotFound
+		if errors.As(err, &notFound) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -185,7 +189,7 @@ func (r *ClientResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 	}
 
-	updated, err := r.apiClient.UpdateClient(plan.Client.ValueString(), pihole.ClientUpdateRequest{
+	updated, err := r.apiClient.UpdateClient(ctx, plan.Client.ValueString(), pihole.ClientUpdateRequest{
 		Comment: plan.Comment.ValueString(),
 		Groups:  groups,
 	})
@@ -219,7 +223,7 @@ func (r *ClientResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	err := r.apiClient.DeleteClient(state.Client.ValueString())
+	err := r.apiClient.DeleteClient(ctx, state.Client.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting client", err.Error())
 		return

@@ -78,7 +78,7 @@ func (d *CNAMERecordDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	record, err := d.client.GetCNAMERecord(config.Domain.ValueString())
+	record, err := d.client.GetCNAMERecord(ctx, config.Domain.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading CNAME record", err.Error())
 		return

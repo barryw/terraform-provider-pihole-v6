@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -93,7 +94,7 @@ func (r *DHCPStaticLeaseResource) Create(ctx context.Context, req resource.Creat
 		Hostname: plan.Hostname.ValueString(),
 	}
 
-	if err := r.client.CreateDHCPStaticLease(lease); err != nil {
+	if err := r.client.CreateDHCPStaticLease(ctx, lease); err != nil {
 		resp.Diagnostics.AddError("Error creating DHCP static lease", err.Error())
 		return
 	}
@@ -112,9 +113,10 @@ func (r *DHCPStaticLeaseResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	lease, err := r.client.GetDHCPStaticLease(state.MAC.ValueString())
+	lease, err := r.client.GetDHCPStaticLease(ctx, state.MAC.ValueString())
 	if err != nil {
-		if _, ok := err.(*pihole.ErrNotFound); ok {
+		var notFound *pihole.ErrNotFound
+		if errors.As(err, &notFound) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -153,7 +155,7 @@ func (r *DHCPStaticLeaseResource) Update(ctx context.Context, req resource.Updat
 		Hostname: plan.Hostname.ValueString(),
 	}
 
-	if err := r.client.UpdateDHCPStaticLease(oldLease, newLease); err != nil {
+	if err := r.client.UpdateDHCPStaticLease(ctx, oldLease, newLease); err != nil {
 		resp.Diagnostics.AddError("Error updating DHCP static lease", err.Error())
 		return
 	}
@@ -178,7 +180,7 @@ func (r *DHCPStaticLeaseResource) Delete(ctx context.Context, req resource.Delet
 		Hostname: state.Hostname.ValueString(),
 	}
 
-	if err := r.client.DeleteDHCPStaticLease(lease); err != nil {
+	if err := r.client.DeleteDHCPStaticLease(ctx, lease); err != nil {
 		resp.Diagnostics.AddError("Error deleting DHCP static lease", err.Error())
 		return
 	}

@@ -74,7 +74,7 @@ func (d *ClientsDataSource) Configure(_ context.Context, req datasource.Configur
 }
 
 func (d *ClientsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	clients, err := d.apiClient.ListClients()
+	clients, err := d.apiClient.ListClients(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list clients", err.Error())
 		return

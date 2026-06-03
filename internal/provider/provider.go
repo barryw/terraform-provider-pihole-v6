@@ -101,7 +101,7 @@ func (p *PiholeProvider) Configure(ctx context.Context, req provider.ConfigureRe
 
 	// Authenticate eagerly to avoid rate limiting when Terraform
 	// makes many parallel requests with the same provider instance.
-	if err := client.Authenticate(); err != nil {
+	if err := client.Authenticate(ctx); err != nil {
 		resp.Diagnostics.AddError("Failed to authenticate with PiHole",
 			fmt.Sprintf("URL: %s — %s", url, err.Error()))
 		return
@@ -121,6 +121,8 @@ func (p *PiholeProvider) Resources(_ context.Context) []func() resource.Resource
 		NewClientResource,
 		NewDHCPStaticLeaseResource,
 		NewSettingResource,
+		NewDNSBlockingResource,
+		NewDNSUpstreamsResource,
 	}
 }
 
@@ -141,5 +143,7 @@ func (p *PiholeProvider) DataSources(_ context.Context) []func() datasource.Data
 		NewDHCPStaticLeaseDataSource,
 		NewDHCPStaticLeasesDataSource,
 		NewSettingDataSource,
+		NewDNSBlockingDataSource,
+		NewDNSUpstreamsDataSource,
 	}
 }

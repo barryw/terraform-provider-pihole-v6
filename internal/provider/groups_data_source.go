@@ -81,7 +81,7 @@ func (d *GroupsDataSource) Configure(_ context.Context, req datasource.Configure
 }
 
 func (d *GroupsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	groups, err := d.client.ListGroups()
+	groups, err := d.client.ListGroups(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Error listing groups", err.Error())
 		return

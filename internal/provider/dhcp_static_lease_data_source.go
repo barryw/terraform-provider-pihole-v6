@@ -66,7 +66,7 @@ func (d *DHCPStaticLeaseDataSource) Read(ctx context.Context, req datasource.Rea
 		return
 	}
 
-	lease, err := d.client.GetDHCPStaticLease(config.MAC.ValueString())
+	lease, err := d.client.GetDHCPStaticLease(ctx, config.MAC.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read DHCP static lease", err.Error())
 		return

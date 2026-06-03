@@ -89,7 +89,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	group, err := r.client.CreateGroup(pihole.GroupCreateRequest{
+	group, err := r.client.CreateGroup(ctx, pihole.GroupCreateRequest{
 		Name:    plan.Name.ValueString(),
 		Comment: plan.Comment.ValueString(),
 		Enabled: plan.Enabled.ValueBool(),
@@ -114,7 +114,7 @@ func (r *GroupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	group, err := r.client.GetGroup(state.Name.ValueString())
+	group, err := r.client.GetGroup(ctx, state.Name.ValueString())
 	if err != nil {
 		var notFound *pihole.ErrNotFound
 		if errors.As(err, &notFound) {
@@ -144,7 +144,7 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	oldName := state.Name.ValueString()
 
-	group, err := r.client.UpdateGroup(oldName, pihole.GroupUpdateRequest{
+	group, err := r.client.UpdateGroup(ctx, oldName, pihole.GroupUpdateRequest{
 		Name:    plan.Name.ValueString(),
 		Comment: plan.Comment.ValueString(),
 		Enabled: plan.Enabled.ValueBool(),
@@ -169,7 +169,7 @@ func (r *GroupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 
-	err := r.client.DeleteGroup(state.Name.ValueString())
+	err := r.client.DeleteGroup(ctx, state.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting group", err.Error())
 		return

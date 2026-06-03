@@ -82,7 +82,7 @@ func (d *AdlistsDataSource) Configure(_ context.Context, req datasource.Configur
 }
 
 func (d *AdlistsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	adlists, err := d.client.ListAdlists()
+	adlists, err := d.client.ListAdlists(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list adlists", err.Error())
 		return

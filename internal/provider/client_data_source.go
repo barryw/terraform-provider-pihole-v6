@@ -70,7 +70,7 @@ func (d *ClientDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	client, err := d.apiClient.GetClient(config.Client.ValueString())
+	client, err := d.apiClient.GetClient(ctx, config.Client.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read client", err.Error())
 		return

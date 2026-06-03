@@ -71,7 +71,7 @@ func (d *DHCPStaticLeasesDataSource) Configure(_ context.Context, req datasource
 }
 
 func (d *DHCPStaticLeasesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	leases, err := d.client.ListDHCPStaticLeases()
+	leases, err := d.client.ListDHCPStaticLeases(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list DHCP static leases", err.Error())
 		return

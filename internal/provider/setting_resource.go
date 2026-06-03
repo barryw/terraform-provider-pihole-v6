@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	pihole "github.com/barryw/go-pihole"
@@ -84,12 +85,18 @@ func (r *SettingResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	err := r.client.SetConfig(plan.Key.ValueString(), json.RawMessage(plan.Value.ValueString()))
+	canonical, err := canonicalizeJSON(plan.Value.ValueString())
 	if err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("value"), "Invalid JSON value", err.Error())
+		return
+	}
+
+	if err := r.client.SetConfig(ctx, plan.Key.ValueString(), json.RawMessage(canonical)); err != nil {
 		resp.Diagnostics.AddError("Error setting config", err.Error())
 		return
 	}
 
+	plan.Value = types.StringValue(canonical)
 	plan.ID = plan.Key
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -101,9 +108,10 @@ func (r *SettingResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	val, err := r.client.GetConfig(state.Key.ValueString())
+	val, err := r.client.GetConfig(ctx, state.Key.ValueString())
 	if err != nil {
-		if _, ok := err.(*pihole.ErrNotFound); ok {
+		var notFound *pihole.ErrNotFound
+		if errors.As(err, &notFound) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -111,7 +119,15 @@ func (r *SettingResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	state.Value = types.StringValue(string(val))
+	// Canonicalize the API response the same way Create/Update canonicalize
+	// user input, so equivalent JSON never shows up as a spurious diff.
+	canonical, err := canonicalizeJSON(string(val))
+	if err != nil {
+		resp.Diagnostics.AddError("Unexpected config value from API",
+			fmt.Sprintf("PiHole returned a value for %q that is not valid JSON: %s", state.Key.ValueString(), err.Error()))
+		return
+	}
+	state.Value = types.StringValue(canonical)
 	state.ID = state.Key
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -123,12 +139,18 @@ func (r *SettingResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	err := r.client.SetConfig(plan.Key.ValueString(), json.RawMessage(plan.Value.ValueString()))
+	canonical, err := canonicalizeJSON(plan.Value.ValueString())
 	if err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("value"), "Invalid JSON value", err.Error())
+		return
+	}
+
+	if err := r.client.SetConfig(ctx, plan.Key.ValueString(), json.RawMessage(canonical)); err != nil {
 		resp.Diagnostics.AddError("Error setting config", err.Error())
 		return
 	}
 
+	plan.Value = types.StringValue(canonical)
 	plan.ID = plan.Key
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }

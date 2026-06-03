@@ -76,7 +76,7 @@ func (d *DomainListDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	entry, err := d.client.GetDomain(config.Type.ValueString(), config.Kind.ValueString(), config.Domain.ValueString())
+	entry, err := d.client.GetDomain(ctx, config.Type.ValueString(), config.Kind.ValueString(), config.Domain.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read domain list entry", err.Error())
 		return

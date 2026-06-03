@@ -76,7 +76,7 @@ func (d *AdlistDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	adlist, err := d.client.GetAdlist(config.Address.ValueString())
+	adlist, err := d.client.GetAdlist(ctx, config.Address.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read adlist", err.Error())
 		return

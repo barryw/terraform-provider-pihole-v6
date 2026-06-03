@@ -12,7 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -64,11 +66,15 @@ func (r *AdlistResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"type": schema.StringAttribute{
 				Description: "The type of the adlist: 'block' or 'allow'.",
 				Required:    true,
+				Validators: []validator.String{
+					stringOneOf("block", "allow"),
+				},
 			},
 			"comment": schema.StringAttribute{
 				Description: "An optional comment for the adlist.",
 				Optional:    true,
 				Computed:    true,
+				Default:     stringdefault.StaticString(""),
 			},
 			"groups": schema.ListAttribute{
 				Description: "List of group IDs this adlist is assigned to.",
@@ -116,7 +122,7 @@ func (r *AdlistResource) Create(ctx context.Context, req resource.CreateRequest,
 		Enabled: plan.Enabled.ValueBool(),
 	}
 
-	adlist, err := r.client.CreateAdlist(createReq)
+	adlist, err := r.client.CreateAdlist(ctx, createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating adlist", err.Error())
 		return
@@ -133,7 +139,7 @@ func (r *AdlistResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	adlist, err := r.client.GetAdlist(state.Address.ValueString())
+	adlist, err := r.client.GetAdlist(ctx, state.Address.ValueString())
 	if err != nil {
 		var notFound *pihole.ErrNotFound
 		if errors.As(err, &notFound) {
@@ -162,7 +168,7 @@ func (r *AdlistResource) Update(ctx context.Context, req resource.UpdateRequest,
 		Enabled: plan.Enabled.ValueBool(),
 	}
 
-	adlist, err := r.client.UpdateAdlist(plan.Address.ValueString(), plan.Type.ValueString(), updateReq)
+	adlist, err := r.client.UpdateAdlist(ctx, plan.Address.ValueString(), plan.Type.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating adlist", err.Error())
 		return
@@ -179,7 +185,7 @@ func (r *AdlistResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	if err := r.client.DeleteAdlist(state.Address.ValueString(), state.Type.ValueString()); err != nil {
+	if err := r.client.DeleteAdlist(ctx, state.Address.ValueString(), state.Type.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Error deleting adlist", err.Error())
 		return
 	}

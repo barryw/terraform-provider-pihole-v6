@@ -14,12 +14,13 @@ Existing Pi-hole Terraform providers target the legacy v5 PHP API or have broken
 
 ## Features
 
-- **7 resources** with full CRUD, import, and drift detection
-- **13 data sources** (singular lookup + plural list for every resource type)
+- **10 resources** with full CRUD, import, and drift detection
+- **17 data sources** (singular lookup + plural list for most resource types)
+- **DNS blocking & upstreams** — manage Pi-hole's global blocking toggle and upstream resolvers declaratively
 - **Multi-instance support** via provider aliases — manage multiple Pi-holes in a single config
-- **Generic settings management** via `pihole_setting` — configure any Pi-hole setting by dot-notation path
+- **Generic settings management** via `pihole_setting` — configure any Pi-hole setting by dot-notation path (now JSON-validated and canonicalized to avoid spurious diffs)
 - **Idempotent operations** — safe to re-apply, handles already-existing records gracefully
-- **Automatic session management** — authenticates once per provider instance, retries on transient errors
+- **Concurrency-safe session management** — authenticates once per provider instance, collapses parallel re-authentication into a single request, and retries transient errors with context-aware backoff
 
 ## Resources
 
@@ -31,11 +32,14 @@ Existing Pi-hole Terraform providers target the legacy v5 PHP API or have broken
 | `pihole_adlist` | Block/allow list URLs |
 | `pihole_domain_list` | Domain allow/deny entries (exact or regex) |
 | `pihole_client` | Client assignments by IP, MAC, or CIDR |
+| `pihole_dhcp_static_lease` | DHCP static lease reservations |
 | `pihole_setting` | Any Pi-hole configuration setting by path |
+| `pihole_dns_blocking` | Global DNS blocking on/off state (singleton) |
+| `pihole_dns_upstreams` | Ordered list of upstream DNS servers (singleton) |
 
 ## Data Sources
 
-Every resource has both a singular (lookup by key) and plural (list all) data source:
+Most resources have both a singular (lookup by key) and plural (list all) data source. The singleton settings (`dns_blocking`, `dns_upstreams`) expose a single data source each:
 
 | Data Source | Description |
 |---|---|
@@ -45,7 +49,10 @@ Every resource has both a singular (lookup by key) and plural (list all) data so
 | `pihole_adlist` / `pihole_adlists` | Read adlists |
 | `pihole_domain_list` / `pihole_domain_lists` | Read domain entries (with optional type/kind filters) |
 | `pihole_client` / `pihole_clients` | Read client assignments |
+| `pihole_dhcp_static_lease` / `pihole_dhcp_static_leases` | Read DHCP static leases |
 | `pihole_setting` | Read any configuration setting |
+| `pihole_dns_blocking` | Read the current DNS blocking state |
+| `pihole_dns_upstreams` | Read the configured upstream DNS servers |
 
 ## Quick Start
 
@@ -165,7 +172,12 @@ terraform import pihole_group.example "IoT Devices"
 terraform import pihole_adlist.example "https://example.com/blocklist.txt"
 terraform import pihole_domain_list.example "deny:exact:ads.example.com"
 terraform import pihole_client.example "192.168.1.50"
+terraform import pihole_dhcp_static_lease.example "aa:bb:cc:dd:ee:ff:192.168.1.50"
 terraform import pihole_setting.example "dns.cache.size"
+
+# Singletons — import with their fixed id
+terraform import pihole_dns_blocking.example "blocking"
+terraform import pihole_dns_upstreams.example "upstreams"
 ```
 
 ## Environment Variables
@@ -189,7 +201,14 @@ go test ./...
 # Acceptance tests (requires a running Pi-hole v6)
 docker compose up -d --wait
 PIHOLE_URL=http://localhost:18080 PIHOLE_PASSWORD=test-password TF_ACC=1 go test ./internal/provider/ -v
+
+# Regenerate docs
+make docs
 ```
+
+### Generating documentation
+
+`make docs` runs [`tfplugindocs`](https://github.com/hashicorp/terraform-plugin-docs), which **requires a real `terraform` CLI on your `PATH`** to introspect the provider schema. **OpenTofu (`tofu`) does not work** for this step: `tfplugindocs` addresses the provider under `registry.terraform.io/hashicorp/…`, while `tofu` resolves the same source under `registry.opentofu.org/…`, so `terraform init` can't find the locally-built provider. Install a `terraform` binary (1.5.7 is the last MPL-licensed release) — it's only used for doc generation, not at runtime.
 
 ## License
 

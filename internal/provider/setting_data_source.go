@@ -67,7 +67,7 @@ func (d *SettingDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	val, err := d.client.GetConfig(config.Key.ValueString())
+	val, err := d.client.GetConfig(ctx, config.Key.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read config setting", err.Error())
 		return

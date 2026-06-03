@@ -1,5 +1,9 @@
 default: testacc
 
+# All targets are phony — notably `docs` would otherwise collide with the
+# docs/ directory and `make docs` would no-op ("up to date").
+.PHONY: default testacc build install generate docs
+
 testacc:
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 

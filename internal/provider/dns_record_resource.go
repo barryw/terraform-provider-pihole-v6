@@ -87,7 +87,7 @@ func (r *DNSRecordResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	err := r.client.CreateDNSRecord(plan.IP.ValueString(), plan.Domain.ValueString())
+	err := r.client.CreateDNSRecord(ctx, plan.IP.ValueString(), plan.Domain.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating DNS record", err.Error())
 		return
@@ -106,7 +106,7 @@ func (r *DNSRecordResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	// List all records and match by both domain AND IP to support multiple
 	// records for the same domain with different IPs (round-robin DNS).
-	records, err := r.client.ListDNSRecords()
+	records, err := r.client.ListDNSRecords(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading DNS records", err.Error())
 		return
@@ -140,7 +140,7 @@ func (r *DNSRecordResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	err := r.client.DeleteDNSRecord(state.IP.ValueString(), state.Domain.ValueString())
+	err := r.client.DeleteDNSRecord(ctx, state.IP.ValueString(), state.Domain.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting DNS record", err.Error())
 		return

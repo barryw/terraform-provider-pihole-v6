@@ -75,7 +75,7 @@ func (d *GroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	group, err := d.client.GetGroup(config.Name.ValueString())
+	group, err := d.client.GetGroup(ctx, config.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading group", err.Error())
 		return

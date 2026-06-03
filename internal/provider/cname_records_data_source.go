@@ -84,7 +84,7 @@ func (d *CNAMERecordsDataSource) Configure(_ context.Context, req datasource.Con
 }
 
 func (d *CNAMERecordsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	records, err := d.client.ListCNAMERecords()
+	records, err := d.client.ListCNAMERecords(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Error listing CNAME records", err.Error())
 		return

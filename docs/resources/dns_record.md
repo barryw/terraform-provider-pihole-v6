@@ -3,12 +3,12 @@
 page_title: "pihole_dns_record Resource - pihole"
 subcategory: ""
 description: |-
-  Manages a local DNS record in PiHole.
+  Manages a local DNS record in PiHole. Multiple records for the same domain with different IPs are supported.
 ---
 
 # pihole_dns_record (Resource)
 
-Manages a local DNS record in PiHole.
+Manages a local DNS record in PiHole. Multiple records for the same domain with different IPs are supported.
 
 ## Example Usage
 

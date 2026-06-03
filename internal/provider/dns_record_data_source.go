@@ -64,7 +64,7 @@ func (d *DNSRecordDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	record, err := d.client.GetDNSRecord(config.Domain.ValueString())
+	record, err := d.client.GetDNSRecord(ctx, config.Domain.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read DNS record", err.Error())
 		return

@@ -69,7 +69,7 @@ func (d *DNSRecordsDataSource) Configure(_ context.Context, req datasource.Confi
 }
 
 func (d *DNSRecordsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	records, err := d.client.ListDNSRecords()
+	records, err := d.client.ListDNSRecords(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list DNS records", err.Error())
 		return

@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.3.0 - 2026-06-03
+#### Features
+- add DNS blocking & upstreams resources, harden settings, adopt go-pihole v1.0.0 - (98d81c9) - Barry Walker
+#### Bug Fixes
+- (**deps**) bump go-pihole to v1.0.1 for auth retry resilience - (c484d72) - Barry Walker
+
+- - -
+
 ## v0.2.5 - 2026-03-31
 #### Bug Fixes
 - support multiple DNS records per domain for round-robin DNS - (b4e5e8f) - Barry Walker, *Claude Opus 4.6 (1M context)*
